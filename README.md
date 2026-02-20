@@ -85,8 +85,8 @@ yarn install
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/Sidr-app.git
-   cd Sidr-app
+   git clone https://github.com/yourusername/sidr.git
+   cd sidr
    ```
 
 2. Install packages:
