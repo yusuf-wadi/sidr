@@ -1,6 +1,6 @@
-# 🌿 QuranTree – Spiritual Growth Meets Digital Gardening
+# 🌿 Sidr – Spiritual Growth Meets Digital Gardening
 
-**QuranTree** is a mobile application that visually reflects your spiritual journey through reading the Quran. Every page you read nourishes a virtual tree in your garden, encouraging consistent practice while celebrating milestones like completing full recitations (Khatm).
+**Sidr** is a mobile application that visually reflects your spiritual journey through reading the Quran. Every page you read nourishes a virtual tree in your garden, encouraging consistent practice while celebrating milestones like completing full recitations (Khatm).
 
 ---
 
@@ -41,7 +41,7 @@ This app aims to blend mindfulness, motivation, and Islamic spirituality by tran
 ## 🗂 Project Structure Overview
 
 ```
-qurantree-app/
+Sidr-app/
 ├── assets/                  # Images/icons
 ├── components/              # Reusable UI elements
 │   ├── TreeView.jsx
@@ -85,8 +85,8 @@ yarn install
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/qurantree-app.git
-   cd qurantree-app
+   git clone https://github.com/yourusername/Sidr-app.git
+   cd Sidr-app
    ```
 
 2. Install packages:
@@ -187,7 +187,7 @@ Inspired by:
 
 Reach out via:
 - Email: [you@example.com](mailto:you@example.com)
-- GitHub Issues: [Open Issue](https://github.com/yourusername/qurantree-app/issues)
+- GitHub Issues: [Open Issue](https://github.com/yourusername/Sidr-app/issues)
 
 ---
 
