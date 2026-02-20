@@ -1,7 +1,3 @@
-Absolutely! Here's a **complete README.md file** tailored for your **QuranTree App MVP**, outlining the **vision**, **tech stack**, **features**, and step-by-step instructions to build it.
-
----
-
 # 🌿 QuranTree – Spiritual Growth Meets Digital Gardening
 
 **QuranTree** is a mobile application that visually reflects your spiritual journey through reading the Quran. Every page you read nourishes a virtual tree in your garden, encouraging consistent practice while celebrating milestones like completing full recitations (Khatm).
