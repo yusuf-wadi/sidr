@@ -49,14 +49,14 @@ export function computeGrowth(state) {
   const fruits = [];
   for (const [surahId, entry] of Object.entries(memo)) {
     if (!entry || entry.status === 'decayed') continue;
-    // progress 0→1 for this surah
-    const totalVerses = entry.versesMemorized.length;
-    // We don't know total verses here, but progress is approximated
-    // by ratio of memorized verses (will be refined by caller)
+    // Support both old versesMemorized[] and new verseConfidence{} formats
+    const goodCount = entry.verseConfidence
+      ? Object.values(entry.verseConfidence).filter(c => c === 'good').length
+      : (entry.versesMemorized ? entry.versesMemorized.length : 0);
     fruits.push({
       surahId: parseInt(surahId),
-      progress: totalVerses, // raw count, normalized in tree builder
-      status: entry.status,  // 'active' or 'complete'
+      progress: goodCount,
+      status: entry.status,
     });
   }
 

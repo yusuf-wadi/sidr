@@ -92,16 +92,9 @@ function appReducer(state, action) {
     case 'MEMO_START': {
       const surahId = action.payload;
       const memo = { ...state.memo };
-      if (!memo[surahId]) {
+      if (!memo[surahId] || memo[surahId].status === 'decayed') {
         memo[surahId] = {
-          versesMemorized: [],
-          lastReviewDate: new Date().toDateString(),
-          status: 'active',
-        };
-      } else if (memo[surahId].status === 'decayed') {
-        // Restart after decay
-        memo[surahId] = {
-          versesMemorized: [],
+          verseConfidence: {},
           lastReviewDate: new Date().toDateString(),
           status: 'active',
         };
@@ -109,42 +102,36 @@ function appReducer(state, action) {
       return { ...state, memo };
     }
 
-    // Mark a verse as memorized
-    case 'MEMO_VERSE': {
-      const { surahId, verseNum, totalVerses } = action.payload;
+    // Set confidence level for a single verse: 'difficult' | 'shaky' | 'good'
+    case 'MEMO_VERSE_CONFIDENCE': {
+      const { surahId, verseNum, confidence, totalVerses } = action.payload;
       const memo = { ...state.memo };
       const entry = memo[surahId];
       if (!entry) return state;
 
-      const verses = [...entry.versesMemorized];
-      if (!verses.includes(verseNum)) {
-        verses.push(verseNum);
-        verses.sort((a, b) => a - b);
-      }
-
-      const isComplete = verses.length >= totalVerses;
+      const verseConfidence = { ...entry.verseConfidence, [verseNum]: confidence };
+      const goodCount = Object.values(verseConfidence).filter(c => c === 'good').length;
       memo[surahId] = {
         ...entry,
-        versesMemorized: verses,
+        verseConfidence,
         lastReviewDate: new Date().toDateString(),
-        status: isComplete ? 'complete' : 'active',
+        status: goodCount >= totalVerses ? 'complete' : 'active',
       };
       return { ...state, memo };
     }
 
-    // Unmark a verse
-    case 'MEMO_UNVERSE': {
-      const { surahId, verseNum } = action.payload;
+    // Mark every verse of a surah as 'good' (for users who already know it)
+    case 'MEMO_MARK_COMPLETE': {
+      const { surahId, totalVerses } = action.payload;
       const memo = { ...state.memo };
-      const entry = memo[surahId];
-      if (!entry) return state;
-
-      const verses = entry.versesMemorized.filter(v => v !== verseNum);
+      const existing = memo[surahId] || {};
+      const verseConfidence = {};
+      for (let v = 1; v <= totalVerses; v++) verseConfidence[v] = 'good';
       memo[surahId] = {
-        ...entry,
-        versesMemorized: verses,
+        ...existing,
+        verseConfidence,
         lastReviewDate: new Date().toDateString(),
-        status: 'active', // un-complete if removing
+        status: 'complete',
       };
       return { ...state, memo };
     }
@@ -240,12 +227,12 @@ export function AppProvider({ children }) {
     dispatch({ type: 'MEMO_START', payload: surahId });
   }, []);
 
-  const memoVerse = useCallback((surahId, verseNum, totalVerses) => {
-    dispatch({ type: 'MEMO_VERSE', payload: { surahId, verseNum, totalVerses } });
+  const memoVerseConfidence = useCallback((surahId, verseNum, confidence, totalVerses) => {
+    dispatch({ type: 'MEMO_VERSE_CONFIDENCE', payload: { surahId, verseNum, confidence, totalVerses } });
   }, []);
 
-  const memoUnverse = useCallback((surahId, verseNum) => {
-    dispatch({ type: 'MEMO_UNVERSE', payload: { surahId, verseNum } });
+  const memoMarkComplete = useCallback((surahId, totalVerses) => {
+    dispatch({ type: 'MEMO_MARK_COMPLETE', payload: { surahId, totalVerses } });
   }, []);
 
   const memoReview = useCallback((surahId) => {
@@ -263,7 +250,7 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       state, addPage, addMinutes, setKhatmPage, resetProgress,
-      memoStart, memoVerse, memoUnverse, memoReview, memoRemove,
+      memoStart, memoVerseConfidence, memoMarkComplete, memoReview, memoRemove,
     }}>
       {children}
     </AppContext.Provider>
