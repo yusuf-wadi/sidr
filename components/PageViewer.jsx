@@ -88,7 +88,7 @@ export default function PageViewer({
           return (
             <View key={`l${idx}`} style={[styles.lineSlot, { height: lineHeight }]}>
               <Text
-                style={[styles.ayahText, { fontSize: ayahFontSize, lineHeight: lineHeight }]}
+                style={[styles.ayahText, { fontSize: ayahFontSize }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
                 minimumFontScale={0.5}
