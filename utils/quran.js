@@ -6,36 +6,22 @@ import quranData from '../data/quran.json';
 import pagesData from '../data/pages.json';
 
 /**
- * Get verses for a specific page
+ * Get page data including lines and verse IDs
  */
-export function getPageVerses(pageNumber) {
+export function getPageData(pageNumber) {
   if (pageNumber < 1 || pageNumber > QURAN_PAGES) {
-    return { page: pageNumber, verses: [], surahStarts: [] };
+    return { page: pageNumber, lines: [], verses: [], surahStarts: [] };
   }
 
   const pageInfo = pagesData[pageNumber];
   if (!pageInfo) {
-    return { page: pageNumber, verses: [], surahStarts: [] };
-  }
-
-  const verses = [];
-  for (const [surahNum, verseNum] of pageInfo.verses) {
-    const surah = quranData[surahNum - 1]; // quranData is 0-indexed
-    if (!surah) continue;
-    const verse = surah.verses.find((v) => v.id === verseNum);
-    if (!verse) continue;
-    verses.push({
-      id: `${surahNum}:${verseNum}`,
-      surahNumber: surahNum,
-      verseNumber: verseNum,
-      text: verse.text,
-      transliteration: surah.transliteration,
-    });
+    return { page: pageNumber, lines: [], verses: [], surahStarts: [] };
   }
 
   return {
     page: pageNumber,
-    verses,
+    lines: pageInfo.lines,
+    verses: pageInfo.verses.map(([s, v]) => `${s}:${v}`),
     surahStarts: pageInfo.surahStarts,
   };
 }

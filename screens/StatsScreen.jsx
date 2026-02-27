@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useAppContext } from '../context/AppContext';
 import ProgressBar from '../components/ProgressBar';
@@ -25,19 +24,18 @@ const BADGES = [
 
 export default function StatsScreen() {
   const { state, resetProgress } = useAppContext();
+  const [confirmingReset, setConfirmingReset] = React.useState(false);
   const treeStage = getTreeStage(state.totalPages, state.khatms);
-  const pagesInCurrentKhatm = state.totalPages % QURAN_PAGES;
-  const recentSessions = state.sessions.slice(0, 5);
+  const khatmPage = state.khatmPage || 1;
+  const pagesInCurrentKhatm = khatmPage - 1;
 
   function confirmReset() {
-    Alert.alert(
-      'Reset Progress',
-      'Are you sure you want to reset all your reading progress? This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset', style: 'destructive', onPress: resetProgress },
-      ],
-    );
+    if (!confirmingReset) {
+      setConfirmingReset(true);
+    } else {
+      resetProgress();
+      setConfirmingReset(false);
+    }
   }
 
   return (
@@ -87,20 +85,6 @@ export default function StatsScreen() {
         </View>
       </View>
 
-      {recentSessions.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Recent Sessions</Text>
-          {recentSessions.map((session) => (
-            <View key={session.id} style={styles.sessionRow}>
-              <Text style={styles.sessionDate}>{session.date}</Text>
-              <Text style={styles.sessionDetail}>
-                {session.pages} pages · {session.minutes} min
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Tree Milestones</Text>
         {TREE_STAGES.map((stage) => {
@@ -121,8 +105,15 @@ export default function StatsScreen() {
       </View>
 
       <TouchableOpacity style={styles.resetButton} onPress={confirmReset}>
-        <Text style={styles.resetButtonText}>🗑️ Reset Progress</Text>
+        <Text style={styles.resetButtonText}>
+          {confirmingReset ? 'Tap again to confirm reset' : 'Reset Progress'}
+        </Text>
       </TouchableOpacity>
+      {confirmingReset && (
+        <TouchableOpacity style={styles.cancelButton} onPress={() => setConfirmingReset(false)}>
+          <Text style={styles.cancelButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }
@@ -286,5 +277,16 @@ const styles = StyleSheet.create({
     color: '#c0392b',
     fontSize: 14,
     fontWeight: '700',
+  },
+  cancelButton: {
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cancelButtonText: {
+    color: '#888',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

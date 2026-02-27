@@ -1,10 +1,8 @@
 /**
  * Generate pages.json from the QPC V1 SQLite database.
  *
- * Reads data/qpc-v1-15-lines.db (page/line/word-id mapping) and
- * data/quran.json (verse texts with word counts) to produce a compact
- * data/pages.json that maps each Quran page (1-604) to its verses and
- * surah starts.
+ * Produces line-level data for each of the 604 pages (15 lines per page),
+ * with pre-computed Arabic text and verse-end markers (۝) embedded inline.
  *
  * Usage:  node scripts/generate-pages.js
  */
@@ -18,28 +16,50 @@ const DB_PATH = path.join(ROOT, 'data', 'qpc-v1-15-lines.db');
 const QURAN_PATH = path.join(ROOT, 'data', 'quran.json');
 const OUT_PATH = path.join(ROOT, 'data', 'pages.json');
 
+const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
+function toArabicNum(n) {
+  return String(n).replace(/[0-9]/g, (d) => ARABIC_DIGITS[d]);
+}
+
 // ---------------------------------------------------------------------------
-// 1. Build a word-id → verse lookup from quran.json
+// 1. Build word-id → verse+position lookup from quran.json
 // ---------------------------------------------------------------------------
 const quranData = JSON.parse(fs.readFileSync(QURAN_PATH, 'utf8'));
 
-// wordId is a 1-based running counter across the entire Quran.
-// Each verse occupies (number-of-space-separated-tokens + 1) word IDs,
-// where the +1 accounts for the verse-end marker glyph.
-const wordToVerse = []; // wordToVerse[wordId] = { surah, verse }
+// Each entry: { surah, verse, wordPos, wordCount }
+// wordPos is 0-indexed; the last position (wordCount-1) is the verse-end marker.
+const wordInfo = [];
 let nextWordId = 1;
 
+// Also build a quick lookup for verse text words
+// verseWords[surah][verse] = [word0, word1, ...]
+const verseWords = {};
+
 for (const surah of quranData) {
+  verseWords[surah.id] = {};
   for (const verse of surah.verses) {
-    const wordCount = verse.text.split(/\s+/).length + 1; // +1 end marker
+    const words = verse.text.split(/\s+/);
+    verseWords[surah.id][verse.id] = words;
+    const wordCount = words.length + 1; // +1 for end marker
     for (let w = 0; w < wordCount; w++) {
-      wordToVerse[nextWordId + w] = { surah: surah.id, verse: verse.id };
+      wordInfo[nextWordId + w] = {
+        surah: surah.id,
+        verse: verse.id,
+        wordPos: w,
+        wordCount,
+      };
     }
     nextWordId += wordCount;
   }
 }
 
 console.log(`Total word IDs mapped: ${nextWordId - 1}`);
+
+// Surah name lookup
+const surahNames = {};
+for (const s of quranData) {
+  surahNames[s.id] = s.name; // Arabic name
+}
 
 // ---------------------------------------------------------------------------
 // 2. Read the pages table from the database
@@ -49,68 +69,91 @@ const rows = db.prepare('SELECT * FROM pages ORDER BY page_number, line_number')
 db.close();
 
 // ---------------------------------------------------------------------------
-// 3. Build pages array
+// 3. Build pages array with line-level data
 // ---------------------------------------------------------------------------
-// pages[0] is unused (pages are 1-indexed).
-// Each entry: { verses: [[surah, verse], ...], surahStarts: [surahNum, ...] }
-const pages = [null]; // index 0 placeholder
+const pages = [null]; // index 0 placeholder (pages are 1-indexed)
 
-let currentPage = null;
-let currentVerses = [];       // Set-like via string keys
+let currentPageNum = null;
+let currentLines = [];
+let currentVerses = new Set();
 let currentSurahStarts = [];
-let verseSeen = new Set();
+
+function buildLineText(firstWid, lastWid) {
+  const parts = [];
+  for (let wid = firstWid; wid <= lastWid; wid++) {
+    const info = wordInfo[wid];
+    if (!info) continue;
+    if (info.wordPos === info.wordCount - 1) {
+      // Verse-end marker
+      parts.push('\u06DD' + toArabicNum(info.verse));
+    } else {
+      // Regular word from verse text
+      const words = verseWords[info.surah][info.verse];
+      if (words && words[info.wordPos] !== undefined) {
+        parts.push(words[info.wordPos]);
+      }
+    }
+    currentVerses.add(`${info.surah}:${info.verse}`);
+  }
+  return parts.join(' ');
+}
 
 function flushPage() {
-  if (currentPage !== null) {
-    // Deduplicate and sort verses by surah then verse number
-    const verseList = Array.from(verseSeen).map(k => k.split(':').map(Number));
-    verseList.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-    pages.push({
-      verses: verseList,
-      surahStarts: currentSurahStarts,
-    });
-  }
+  if (currentPageNum === null) return;
+  const verseList = Array.from(currentVerses).map((k) => k.split(':').map(Number));
+  verseList.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  pages.push({
+    lines: currentLines,
+    verses: verseList,
+    surahStarts: currentSurahStarts,
+  });
 }
 
 for (const row of rows) {
-  if (row.page_number !== currentPage) {
+  if (row.page_number !== currentPageNum) {
     flushPage();
-    currentPage = row.page_number;
-    verseSeen = new Set();
+    currentPageNum = row.page_number;
+    currentLines = [];
+    currentVerses = new Set();
     currentSurahStarts = [];
   }
 
-  // Track surah starts
-  if (row.line_type === 'surah_name' && row.surah_number) {
+  if (row.line_type === 'surah_name') {
     currentSurahStarts.push(row.surah_number);
-  }
-
-  // Map word IDs to verses
-  if (row.first_word_id && row.last_word_id) {
-    const first = Number(row.first_word_id);
-    const last = Number(row.last_word_id);
-    for (let wid = first; wid <= last; wid++) {
-      const v = wordToVerse[wid];
-      if (v) {
-        verseSeen.add(`${v.surah}:${v.verse}`);
-      }
-    }
+    currentLines.push({
+      type: 'surah_name',
+      surah: row.surah_number,
+      name: surahNames[row.surah_number] || '',
+    });
+  } else if (row.line_type === 'basmallah') {
+    currentLines.push({ type: 'basmallah' });
+  } else if (row.first_word_id && row.last_word_id) {
+    const text = buildLineText(Number(row.first_word_id), Number(row.last_word_id));
+    currentLines.push({
+      type: 'ayah',
+      text,
+      centered: row.is_centered === 1,
+    });
   }
 }
-flushPage(); // flush last page
+flushPage();
 
 console.log(`Generated ${pages.length - 1} pages`);
 
-// Quick sanity checks
+// Sanity checks
 const p1 = pages[1];
-console.log(`Page 1: ${p1.verses.length} verses, surahStarts: [${p1.surahStarts}]`);
+console.log(`Page 1: ${p1.lines.length} lines, ${p1.verses.length} verses`);
+console.log(`  Line 1: ${JSON.stringify(p1.lines[0])}`);
+console.log(`  Line 2: ${p1.lines[1]?.text?.substring(0, 60)}...`);
 const p2 = pages[2];
-console.log(`Page 2: ${p2.verses.length} verses, surahStarts: [${p2.surahStarts}]`);
+console.log(`Page 2: ${p2.lines.length} lines, surahStarts: [${p2.surahStarts}]`);
+console.log(`  Line 1: ${JSON.stringify(p2.lines[0])}`);
 const p604 = pages[604];
-console.log(`Page 604: ${p604.verses.length} verses, surahStarts: [${p604.surahStarts}]`);
+console.log(`Page 604: ${p604.lines.length} lines, surahStarts: [${p604.surahStarts}]`);
 
 // ---------------------------------------------------------------------------
 // 4. Write output
 // ---------------------------------------------------------------------------
 fs.writeFileSync(OUT_PATH, JSON.stringify(pages));
-console.log(`Wrote ${OUT_PATH}`);
+const sizeMB = (fs.statSync(OUT_PATH).size / 1024 / 1024).toFixed(2);
+console.log(`Wrote ${OUT_PATH} (${sizeMB} MB)`);

@@ -1,79 +1,83 @@
 import React from 'react';
 import { Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
 
 import { AppProvider } from './context/AppContext';
 import HomeScreen from './screens/HomeScreen';
-import ReadingScreen from './screens/ReadingScreen';
+import KhatmScreen from './screens/KhatmScreen';
+import ExploreScreen from './screens/ExploreScreen';
 import StatsScreen from './screens/StatsScreen';
+import MemoScreen from './screens/MemoScreen';
 
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
 
-function HomeStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Home" component={HomeScreen} />
-      <Stack.Screen name="Reading" component={ReadingScreen} />
-    </Stack.Navigator>
-  );
+function TabIcon({ emoji, color }) {
+  return <Text style={{ fontSize: 20, color }}>{emoji}</Text>;
 }
 
 export default function App() {
   return (
-    <AppProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
-        <Tab.Navigator
-          screenOptions={{
-            headerShown: false,
-            tabBarActiveTintColor: '#1a5c38',
-            tabBarInactiveTintColor: '#aaa',
-            tabBarStyle: {
-              backgroundColor: '#fff',
-              borderTopColor: '#e0e0e0',
-            },
-          }}
-        >
-          <Tab.Screen
-            name="HomeTab"
-            component={HomeStack}
-            options={{
-              title: 'Home',
-              tabBarIcon: ({ color }) => (
-                <TabIcon emoji="🌿" color={color} />
-              ),
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AppProvider>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <Tab.Navigator
+            screenOptions={{
+              headerShown: false,
+              tabBarActiveTintColor: '#1a5c38',
+              tabBarInactiveTintColor: '#aaa',
+              tabBarStyle: {
+                backgroundColor: '#fff',
+                borderTopColor: '#e0e0e0',
+              },
             }}
-          />
-          <Tab.Screen
-            name="ReadingTab"
-            component={ReadingScreen}
-            options={{
-              title: 'Read',
-              tabBarIcon: ({ color }) => (
-                <TabIcon emoji="📖" color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="StatsTab"
-            component={StatsScreen}
-            options={{
-              title: 'Stats',
-              tabBarIcon: ({ color }) => (
-                <TabIcon emoji="📊" color={color} />
-              ),
-            }}
-          />
-        </Tab.Navigator>
-      </NavigationContainer>
-    </AppProvider>
+          >
+            <Tab.Screen
+              name="HomeTab"
+              component={HomeScreen}
+              options={{
+                title: 'Home',
+                tabBarIcon: ({ color }) => <TabIcon emoji="🌿" color={color} />,
+              }}
+            />
+            <Tab.Screen
+              name="KhatmTab"
+              component={KhatmScreen}
+              options={{
+                title: 'Khatm',
+                tabBarIcon: ({ color }) => <TabIcon emoji="📖" color={color} />,
+              }}
+            />
+            <Tab.Screen
+              name="MemoTab"
+              component={MemoScreen}
+              options={{
+                title: 'Memo',
+                tabBarIcon: ({ color }) => <TabIcon emoji="🧠" color={color} />,
+              }}
+            />
+            <Tab.Screen
+              name="ExploreTab"
+              component={ExploreScreen}
+              options={{
+                title: 'Explore',
+                tabBarIcon: ({ color }) => <TabIcon emoji="🔍" color={color} />,
+              }}
+            />
+            <Tab.Screen
+              name="StatsTab"
+              component={StatsScreen}
+              options={{
+                title: 'Stats',
+                tabBarIcon: ({ color }) => <TabIcon emoji="📊" color={color} />,
+              }}
+            />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </AppProvider>
+    </GestureHandlerRootView>
   );
-}
-
-function TabIcon({ emoji, color }) {
-  return <Text style={{ fontSize: 20, color }}>{emoji}</Text>;
 }
